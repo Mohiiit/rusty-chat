@@ -25,3 +25,8 @@ pub struct Task {
     pub description: String,
     pub status: String
 }
+
+#[derive(Serialize, Debug, Deserialize)]
+pub struct TaskList {
+    pub tasks: Vec<Task>,
+}
