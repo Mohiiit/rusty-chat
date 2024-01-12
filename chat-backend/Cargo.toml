@@ -1,0 +1,22 @@
+[package]
+name = "chat-backend"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+argon2 = "0.5.2"
+axum = "0.7.2"
+bson = { version = "2.8.1", features = ["chrono-0_4"] }
+chrono = "0.4.31"
+dotenv = "0.15.0"
+futures-util = "0.3.29"
+log = "0.4.20"
+mongodb = "2.8.0"
+rand = "0.8.5"
+serde = "1.0.193"
+serde_json = "1.0.108"
+tokio  = { version = "1.35.1", features = ["full"] }
+utoipa = "4.1.0"
+rand_core = { version = "0.6.4", features = ["std"] }
