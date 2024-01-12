@@ -1,9 +1,16 @@
 use crate::models::{CreateUserRequest, LoginUserRequest, User};
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use axum::{extract::State, http::{HeaderMap, StatusCode}, response::{IntoResponse, Response}, Json, body::Body};
+use axum::{
+    body::Body,
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
 use mongodb::{
     bson::{doc, oid::ObjectId, Document},
-    Client, Collection, Database,error::Error
+    error::Error,
+    Client, Collection, Database,
 };
 use rand_core::OsRng;
 use serde_json::json;
@@ -42,30 +49,38 @@ pub async fn login_user(
     let user_doc = user_collection
         .find_one(doc! { "name": payload.name }, None)
         .await
-        .unwrap();
+        .map_err(|e| {
+            let error_response = serde_json::json!({
+                "status": "error",
+                "message": format!("Database error: {}", e),
+            });
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(error_response))
+        })?
+        .ok_or_else(|| {
+            let error_response = serde_json::json!({
+                "status": "fail",
+                "message": "Invalid email or password",
+            });
+            (StatusCode::BAD_REQUEST, Json(error_response))
+        })?;
 
-    if let Some(user_doc) = user_doc {
+    let saved_password = user_doc.get_str("password").unwrap();
+    let verification_result = verify_password_internal(saved_password, &payload.password).await?;
 
-        let saved_password = user_doc.get_str("password").unwrap();
-        let verification_result = verify_password_internal(saved_password, &payload.password).await?;
+    // Generate authentication token (e.g., using a library like `jsonwebtoken`)
+    // let token = generate_auth_token(&user_doc).await?;
 
-        
-            // Generate authentication token (e.g., using a library like `jsonwebtoken`)
-            // let token = generate_auth_token(&user_doc).await?;
+    // Set authentication cookie (e.g., using a library like `cookie`)
+    // let mut headers = HeaderMap::new();
+    // set_auth_cookie(&mut headers, token).await?;
 
-            // Set authentication cookie (e.g., using a library like `cookie`)
-            // let mut headers = HeaderMap::new();
-            // set_auth_cookie(&mut headers, token).await?;
+    // Return successful login response
+    let success_response = serde_json::json!({
+        "status": "success",
+        "message": "Correct Password",
+    });
 
-            // Return successful login response
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(Body::from("Login successful"))
-                .unwrap())
-        
-    } else {
-        Err((StatusCode::NOT_FOUND, Json(json!({ "status": "fail", "message": "User not found" }))))
-    }
+    Ok((StatusCode::OK, Json(success_response)))
 }
 
 async fn hash_password(password: &str) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
@@ -88,7 +103,6 @@ async fn verify_password_internal(
     saved_password: &str,
     entered_password: &str,
 ) -> Result<bool, (StatusCode, Json<serde_json::Value>)> {
-    
     let is_valid = match PasswordHash::new(&saved_password) {
         Ok(parsed_hash) => Argon2::default()
             .verify_password(entered_password.as_bytes(), &parsed_hash)

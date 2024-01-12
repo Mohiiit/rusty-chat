@@ -29,7 +29,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/login", get(login_user))
         .with_state(mongodb_pool);
 
-    // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
     Ok(())
@@ -42,8 +41,6 @@ pub async fn get_database_connection() -> Result<Database, mongodb::error::Error
         ClientOptions::parse_with_resolver_config(&client_uri, ResolverConfig::cloudflare())
             .await?;
     let client = Client::with_options(options)?;
-    // let client_options = ClientOptions::parse(database_config.connection_string()).await?;
-    // let client = Client::with_options(client_options)?;
     Ok(client.database("rusty-chat"))
 }
 
