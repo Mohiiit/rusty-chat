@@ -1,0 +1,3 @@
+/chat-backend/target
+/chat-backend/Cargo.lock
+/chat-backend/.env
