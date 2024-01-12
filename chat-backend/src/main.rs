@@ -1,12 +1,13 @@
 mod handlers;
 mod models;
+mod utils;
 use axum::{
     handler,
     routing::{get, post},
     Router,
 };
 use dotenv::dotenv;
-use handlers::{create_user, login_user};
+use handlers::user::{create_user, login_user};
 use models::User;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
