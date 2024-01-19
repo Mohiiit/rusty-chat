@@ -2,12 +2,13 @@ mod handlers;
 mod models;
 mod utils;
 use axum::{
-    handler,
+    handler, middleware,
     routing::{get, post},
     Router,
 };
 use dotenv::dotenv;
 use handlers::user::{create_user, login_user};
+use handlers::chat_room::{create_chat_room, get_chat_room};
 use models::User;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
@@ -16,6 +17,7 @@ use mongodb::{
 use std::env;
 use std::error::Error;
 use tokio;
+use utils::jwt::auth;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -26,11 +28,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .expect("failed to connect to mongodb");
     let app = Router::new()
         .route("/", get(root))
+        .route("/create_chat_room", post(create_chat_room))
+        .route("/get_chat_room", get(get_chat_room))
+        .layer(middleware::from_fn_with_state(mongodb_pool.clone(), auth))
         .route("/create_user", post(create_user))
         .route("/login", get(login_user))
         .with_state(mongodb_pool);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await.unwrap();
     axum::serve(listener, app).await.unwrap();
     Ok(())
 }
