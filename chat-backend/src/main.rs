@@ -2,7 +2,7 @@ mod handlers;
 mod models;
 mod utils;
 use axum::{
-    handler,
+    handler, middleware,
     routing::{get, post},
     Router,
 };
@@ -16,6 +16,7 @@ use mongodb::{
 use std::env;
 use std::error::Error;
 use tokio;
+use utils::jwt::auth;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -25,12 +26,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .expect("failed to connect to mongodb");
     let app = Router::new()
-        .route("/", get(root))
+        .route(
+            "/",
+            get(root).route_layer(middleware::from_fn_with_state(mongodb_pool.clone(), auth)),
+        )
         .route("/create_user", post(create_user))
         .route("/login", get(login_user))
         .with_state(mongodb_pool);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await.unwrap();
     axum::serve(listener, app).await.unwrap();
     Ok(())
 }
