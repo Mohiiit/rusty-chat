@@ -8,6 +8,7 @@ use axum::{
 };
 use dotenv::dotenv;
 use handlers::user::{create_user, login_user};
+use handlers::chat_room::{create_chat_room, get_chat_room};
 use models::User;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
@@ -26,10 +27,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .expect("failed to connect to mongodb");
     let app = Router::new()
-        .route(
-            "/",
-            get(root).route_layer(middleware::from_fn_with_state(mongodb_pool.clone(), auth)),
-        )
+        .route("/", get(root))
+        .route("/create_chat_room", post(create_chat_room))
+        .route("/get_chat_room", get(get_chat_room))
+        .layer(middleware::from_fn_with_state(mongodb_pool.clone(), auth))
         .route("/create_user", post(create_user))
         .route("/login", get(login_user))
         .with_state(mongodb_pool);

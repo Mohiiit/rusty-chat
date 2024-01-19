@@ -1,24 +1,19 @@
 use axum::{
-    extract::State,
-    http::{header, Request, StatusCode},
-    middleware::Next,
-    response::IntoResponse,
-    Json,
     body::Body,
+    extract::{Extension, Json, State, FromRequest},
+    http::{header, Request, StatusCode, request::Parts},
+    middleware::Next,
+    response::IntoResponse, Error, async_trait
 };
 use chrono::{Duration, Utc};
 use dotenv::dotenv;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
-use mongodb::{
-    bson::{doc, oid::ObjectId, Document},
-    error::Error,
-    Client, Collection, Database,
-};
-use serde::{Deserialize, Serialize};
 use std::env;
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
+use mongodb::{bson::{doc, Document}, Collection, Database};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub struct Cliams {
+pub struct Claims {
     pub exp: usize,
     pub iat: usize,
     pub name: String,
@@ -28,33 +23,40 @@ pub fn encode_jwt(name: String) -> Result<String, StatusCode> {
     dotenv().ok();
 
     let now = Utc::now();
-    let expire = Duration::hours(2);
+    let expire = Duration::hours(1);
 
-    let claim = Cliams {
+    let claim = Claims {
         iat: now.timestamp() as usize,
         exp: (now + expire).timestamp() as usize,
-        name: name,
+        name,
     };
     let secret = env::var("TOKEN").expect("You must set the TOKEN environment var!");
 
-    return encode(
+    encode(
         &Header::default(),
         &claim,
         &EncodingKey::from_secret(secret.as_ref()),
     )
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-pub fn decode_jwt(jwt: String) -> Result<TokenData<Cliams>, StatusCode> {
+pub fn decode_jwt(jwt: String) -> Result<TokenData<Claims>, (StatusCode, Json<serde_json::Value>)> {
     let secret = env::var("TOKEN").expect("You must set the TOKEN environment var!");
-    let res: Result<TokenData<Cliams>, StatusCode> = decode(
+
+    Ok(decode(
         &jwt,
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::default(),
     )
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
-    return res;
+    .map_err(|e| {
+        let error_response = serde_json::json!({
+            "status": "error",
+            "message": format!("Token error: {}", e),
+        });
+        (StatusCode::UNAUTHORIZED, Json(error_response))
+    })?)
 }
+
 
 pub async fn auth(
     State(database): State<Database>,
@@ -80,30 +82,11 @@ pub async fn auth(
         });
         (StatusCode::UNAUTHORIZED, Json(json_error))
     })?;
+
     let secret = env::var("TOKEN").expect("You must set the TOKEN environment var!");
-    let claims = decode::<Cliams>(
-        &token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::default(),
-    )
-    .map_err(|_| {
-        let json_error = serde_json::json!({
-            "status": "fail",
-            "message": "Invalid token".to_string(),
-        });
-        (StatusCode::UNAUTHORIZED, Json(json_error))
-    })?
-    .claims;
+    let claims = decode_jwt(token)?;
 
-    // let username = to_str(&claims.name).map_err(|_| {
-    //     let json_error = serde_json::json!({
-    //         "status": "fail",
-    //         "message": "Invalid token".to_string(),
-    //     });
-    //     (StatusCode::UNAUTHORIZED, Json(json_error))
-    // })?;
-
-    let username = claims.name.to_string();
+    let username = claims.claims.name.to_string();
 
     let user_collection: Collection<Document> = database.collection("users");
 
@@ -125,6 +108,7 @@ pub async fn auth(
             (StatusCode::BAD_REQUEST, Json(error_response))
         })?;
 
-    req.extensions_mut().insert(user_doc);
+    req.extensions_mut().insert(user_doc.clone());
+    println!("this is it: {:?}", user_doc);
     Ok(next.run(req).await)
 }
