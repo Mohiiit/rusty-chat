@@ -32,14 +32,12 @@ pub struct ChatRoom {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Message {
     pub _id: ObjectId,
-    pub owner: String,
     pub chat_room_id: ObjectId,
     pub message: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct CreateChatRoom {
-    pub owner: String,
     pub name: String,
 }
 

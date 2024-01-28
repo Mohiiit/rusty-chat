@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{Extension, Json, State, FromRequest},
+    extract::{Extension, Json, State, FromRequest, FromRequestParts},
     http::{header, Request, StatusCode, request::Parts},
     middleware::Next,
     response::IntoResponse, Error, async_trait
@@ -11,7 +11,7 @@ use std::env;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use mongodb::{bson::{doc, Document}, Collection, Database};
 use serde::{Deserialize, Serialize};
-use hyper;
+use crate::utils::token::Ctx;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -109,9 +109,32 @@ pub async fn auth(
             (StatusCode::BAD_REQUEST, Json(error_response))
         })?;
     
+    // let username = user_doc.get_str("name").unwrap();
 
-
-    req.extensions_mut().insert(user_doc.clone());
-    // println!("this is it: {:?}", hyper::body::to_bytes(req.body()).await);
+    req.extensions_mut().insert(Ctx::new(username.clone()));
+    println!("this is it: {:?}", username.clone());
     Ok(next.run(req).await)
+}
+
+
+#[async_trait]
+impl<S: Send + Sync> FromRequestParts<S> for Ctx {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        println!("->> {:<12} - Ctx", "EXTRACTOR");
+
+        let ctx = parts
+            .extensions
+            .get::<Ctx>()
+            .ok_or_else(|| {
+                // Return a suitable error response
+                (StatusCode::BAD_REQUEST, Json(serde_json::json!({
+                    "status": "fail",
+                    "message": "Invalid username"
+                })))
+            })?;
+
+        Ok(ctx.clone()) // Clone the extracted Ctx
+    }
 }
