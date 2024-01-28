@@ -7,8 +7,8 @@ use axum::{
     Router,
 };
 use dotenv::dotenv;
-use handlers::user::{create_user, login_user};
 use handlers::chat_room::{create_chat_room, get_chat_room};
+use handlers::user::{create_user, login_user};
 use models::User;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},

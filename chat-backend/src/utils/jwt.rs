@@ -11,6 +11,7 @@ use std::env;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use mongodb::{bson::{doc, Document}, Collection, Database};
 use serde::{Deserialize, Serialize};
+use hyper;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -107,8 +108,10 @@ pub async fn auth(
             });
             (StatusCode::BAD_REQUEST, Json(error_response))
         })?;
+    
+
 
     req.extensions_mut().insert(user_doc.clone());
-    println!("this is it: {:?}", user_doc);
+    // println!("this is it: {:?}", hyper::body::to_bytes(req.body()).await);
     Ok(next.run(req).await)
 }
