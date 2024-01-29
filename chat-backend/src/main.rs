@@ -51,5 +51,5 @@ pub async fn get_database_connection() -> Result<Database, mongodb::error::Error
 }
 
 pub async fn root() -> &'static str {
-    "Hello, World! from Axum"
+    "Hello, World! from Axum and this is true and this is good"
 }
