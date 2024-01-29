@@ -21,3 +21,4 @@ tokio  = { version = "1.35.1", features = ["full"] }
 utoipa = "4.1.0"
 rand_core = { version = "0.6.4", features = ["std"] }
 jsonwebtoken = "9.2.0"
+hyper = "0.14"
