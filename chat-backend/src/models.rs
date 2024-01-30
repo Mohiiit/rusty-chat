@@ -29,13 +29,6 @@ pub struct ChatRoom {
     pub owner: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Message {
-    pub _id: ObjectId,
-    pub chat_room_id: ObjectId,
-    pub message: String,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct CreateChatRoom {
     pub name: String,
@@ -45,4 +38,23 @@ pub struct CreateChatRoom {
 pub struct LoginUserResponseModel {
     pub status: String,
     pub token: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Message {
+    pub _id: ObjectId,
+    pub chat_room_id: ObjectId,
+    pub message: String,
+    pub sender: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SendMessage {
+    pub chat_room_id: ObjectId,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GetMessage {
+    pub message: String,
 }
