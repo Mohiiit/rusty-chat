@@ -1,17 +1,22 @@
+use crate::models::{User, UserInRequest};
 use axum::{
+    async_trait,
     body::Body,
-    extract::{Extension, Json, State, FromRequest, FromRequestParts},
-    http::{header, Request, StatusCode, request::Parts},
+    extract::{Extension, FromRequest, FromRequestParts, Json, State},
+    http::{header, request::Parts, Request, StatusCode},
     middleware::Next,
-    response::IntoResponse, Error, async_trait
+    response::IntoResponse,
+    Error,
 };
 use chrono::{Duration, Utc};
 use dotenv::dotenv;
-use std::env;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
-use mongodb::{bson::{doc, Document}, Collection, Database};
+use mongodb::{
+    bson::{doc, Document},
+    Collection, Database,
+};
 use serde::{Deserialize, Serialize};
-use crate::utils::token::Ctx;
+use std::env;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -57,7 +62,6 @@ pub fn decode_jwt(jwt: String) -> Result<TokenData<Claims>, (StatusCode, Json<se
         (StatusCode::UNAUTHORIZED, Json(error_response))
     })?)
 }
-
 
 pub async fn auth(
     State(database): State<Database>,
@@ -108,33 +112,36 @@ pub async fn auth(
             });
             (StatusCode::BAD_REQUEST, Json(error_response))
         })?;
-    
+
+    let user: UserInRequest = UserInRequest {
+        name: user_doc.get_str("name").unwrap().to_string(),
+        email: user_doc.get_str("email").unwrap().to_string(),
+    };
     // let username = user_doc.get_str("name").unwrap();
 
-    req.extensions_mut().insert(Ctx::new(username.clone()));
+    req.extensions_mut().insert(user);
     println!("this is it: {:?}", username.clone());
     Ok(next.run(req).await)
 }
 
+// #[async_trait]
+// impl<S: Send + Sync> FromRequestParts<S> for Ctx {
+//     type Rejection = (StatusCode, Json<serde_json::Value>);
 
-#[async_trait]
-impl<S: Send + Sync> FromRequestParts<S> for Ctx {
-    type Rejection = (StatusCode, Json<serde_json::Value>);
+//     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+//         println!("->> {:<12} - Ctx", "EXTRACTOR");
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        println!("->> {:<12} - Ctx", "EXTRACTOR");
+//         let ctx = parts.extensions.get::<Ctx>().ok_or_else(|| {
+//             // Return a suitable error response
+//             (
+//                 StatusCode::BAD_REQUEST,
+//                 Json(serde_json::json!({
+//                     "status": "fail",
+//                     "message": "Invalid username"
+//                 })),
+//             )
+//         })?;
 
-        let ctx = parts
-            .extensions
-            .get::<Ctx>()
-            .ok_or_else(|| {
-                // Return a suitable error response
-                (StatusCode::BAD_REQUEST, Json(serde_json::json!({
-                    "status": "fail",
-                    "message": "Invalid username"
-                })))
-            })?;
-
-        Ok(ctx.clone()) // Clone the extracted Ctx
-    }
-}
+//         Ok(ctx.clone()) // Clone the extracted Ctx
+//     }
+// }

@@ -1,6 +1,6 @@
-use crate::models::{ChatRoom, GetMessage, SendMessage};
+use crate::models::{ChatRoom, GetMessage, SendMessage, UserInRequest};
 use crate::models::{Message, User};
-use crate::utils::token::Ctx;
+// use crate::utils::token::Ctx;
 use axum::{
     body::Body,
     extract::{Query, Request, State},
@@ -21,7 +21,7 @@ use std::collections::HashMap;
 
 pub async fn add_message(
     State(database): State<Database>,
-    ctx: Ctx,
+    Extension(current_user): Extension<UserInRequest>,
     Json(payload): Json<SendMessage>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let chat_room_collection: Collection<Document> = database.collection("chat_rooms");
@@ -45,7 +45,7 @@ pub async fn add_message(
         })?;
 
     let new_message: Document = doc! {
-        "sender": &ctx.username(),
+        "sender": &current_user.name,
         "message": &payload.message,
         "chat_room_id":&payload.chat_room_id
     };
