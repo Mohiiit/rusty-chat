@@ -1,6 +1,6 @@
-use crate::models::User;
 use crate::models::{ChatRoom, CreateChatRoom};
-use crate::utils::token::Ctx;
+use crate::models::{User, UserInRequest};
+// use crate::utils::token::Ctx;
 use axum::{
     body::Body,
     extract::{Query, Request, State},
@@ -19,23 +19,23 @@ use std::collections::HashMap;
 
 pub async fn create_chat_room(
     State(database): State<Database>,
-    ctx: Ctx,
+    Extension(current_user): Extension<UserInRequest>,
     Json(payload): Json<CreateChatRoom>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let chat_room_collection: Collection<Document> = database.collection("chat_rooms");
-    println!("username here: {:?}", ctx.username());
+    println!("username here: {:?}", current_user.name);
     let new_chat_room: Document = doc! {
-        "owner": &ctx.username(),
+        "owner": &current_user.name,
         "name": &payload.name
     };
     let insert_result = chat_room_collection.insert_one(new_chat_room, None).await;
     let success_response = serde_json::json!({
         "status": "success",
-        "message": format!("Chatroom with name: {} added with ownership of: {} created", payload.name, ctx.username()),
+        "message": format!("Chatroom with name: {} added with ownership of: {} created", payload.name, &current_user.name),
     });
     let fail_response = serde_json::json!({
         "status": "fail",
-        "message": format!("Chatroom with name: {} added with ownership of: {} failed", payload.name, ctx.username()),
+        "message": format!("Chatroom with name: {} added with ownership of: {} failed", payload.name, &current_user.name),
     });
     match insert_result {
         Ok(result) => Ok((StatusCode::CREATED, Json(success_response))),

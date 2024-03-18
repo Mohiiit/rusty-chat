@@ -8,6 +8,7 @@ use axum::{
 };
 use dotenv::dotenv;
 use handlers::chat_room::{create_chat_room, get_chat_room};
+use handlers::message::{add_message, get_messages};
 use handlers::user::{create_user, login_user};
 use models::User;
 use mongodb::{
@@ -30,6 +31,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/", get(root))
         .route("/create_chat_room", post(create_chat_room))
         .route("/get_chat_room", get(get_chat_room))
+        .route("/send_message", post(add_message))
+        .route("/get_message", get(get_messages))
         .layer(middleware::from_fn_with_state(mongodb_pool.clone(), auth))
         .route("/create_user", post(create_user))
         .route("/login", get(login_user))
@@ -51,5 +54,5 @@ pub async fn get_database_connection() -> Result<Database, mongodb::error::Error
 }
 
 pub async fn root() -> &'static str {
-    "Hello, World! from Axum"
+    "Hello, World! from Axum and this is true and this is good"
 }
